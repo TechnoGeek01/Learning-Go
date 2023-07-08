@@ -6,42 +6,52 @@ import (
 	"net/http"
 	"path/filepath"
 	"text/template"
+
+	"github.com/TechnoGeek01/learning-go/config"
+	"github.com/TechnoGeek01/learning-go/pkg/models"
 )
 
+var app *config.AppConfig
+
+// NewTemplates sets the new config for the template package
+func NewTemplates(a *config.AppConfig) {
+	app = a
+}
+
+func AddDefaultData(td *models.TemplateData) *models.TemplateData {
+	return td
+}
+
 // RenderTemplate renders template using html/template
-func RenderTemplate(w http.ResponseWriter, tmpl string) {
-	// get the template cache from the app config
+func RenderTemplate(w http.ResponseWriter, tmpl string, td *models.TemplateData) {
+	var tc map[string]*template.Template
+	if app.UseCache {
+		// get the template cache from the app config
 
-	// create a template cache
-	tc, err := CreateTemplateCache()
-
-	if err != nil {
-		log.Fatal(err)
+		tc = app.TemplateCache
+	} else {
+		tc, _ = CreateTemplateCache()
 	}
 
 	// get requested template from cache
 	t, ok := tc[tmpl]
 	if !ok {
-		log.Fatal(err)
+		log.Fatal("could not get template from template  cache")
 	}
 
 	buf := new(bytes.Buffer)
+	td = AddDefaultData(td)
 
-	err = t.Execute(buf, nil)
-
-	if err != nil {
-		log.Println(err)
-	}
+	_ = t.Execute(buf, td)
 
 	// render the template
-	_, err = buf.WriteTo(w)
+	_, err := buf.WriteTo(w)
 	if err != nil {
 		log.Println(err)
 	}
 }
 
 func CreateTemplateCache() (map[string]*template.Template, error) {
-
 	myCache := map[string]*template.Template{}
 
 	// get all of the files names *.page.tmpl from ./templates
@@ -73,7 +83,6 @@ func CreateTemplateCache() (map[string]*template.Template, error) {
 			if err != nil {
 				return myCache, err
 			}
-			log.Println(ts)
 		}
 
 		myCache[name] = ts
